@@ -3,6 +3,7 @@ class Display {
   int line; // What line for the text to be displayed
   boolean forward; // Direction of text
   float scrollSpeed; // Speed of text in pixels/frame
+  color t_color;
   
   int scrollMode; // 0 = Auto, 1 = On, 2 = Off
   float scrollPos; // X position of text that is too wide for display
@@ -17,6 +18,7 @@ class Display {
     text = "";
     line = 0;
     forward = true;
+    tColor = 0;
     
     scrollSpeed = (float(TS)/width)*default_SS;
     scrollMode = 0;
@@ -30,6 +32,7 @@ class Display {
   }
   
   void render() {
+    fill(tColor);
     if ((sl <= width || scrollMode == 2) && scrollMode != 1) {
       text(text, (width-sl)/2, y);
     } else {
