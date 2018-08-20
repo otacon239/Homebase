@@ -1,41 +1,52 @@
 class Display {
+    int lineMode; // Mode switch
+
     String text; // The text to be displayed
     int line; // What line for the text to be displayed
     boolean forward; // Direction of text
     float scrollSpeed; // Speed of text in pixels/frame
-    color tColor;
+    color tColor; // Text Color
+    boolean rainbow; // Enable/disable rainbow text
+    float rainbowSpeed; // Speed of hue cycle on rainbow effect
 
-    boolean vuMeter;
-    int vuMode;
-    float vuBoost;
-    float vuSmooth;
-    float sclSnd;
-    float hueCycles;
-    float hueSpeed;
+    SimpleDateFormat dateFormat; // See https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html for more info
+    Date now; // Type for storing the current time
+
+    int vuMode; // To be used later when more visualizers are added
+    float vuSmooth; // Sets level of averaging for amplitude
+    float sclSnd; // Designed for storing the sound level only once per frame
+    float hueCycles; // Number of full hue rotations on the screen
+    float hueSpeed; // Speed the hue rotation moves in degrees per frame
     
-    int scrollMode; // 0 = Auto, 1 = On, 2 = Off
+    int scrollMode; // 0 = Auto (based on string width), 1 = On, 2 = Off
     float scrollPos; // X position of text that is too wide for display
-    int scrollDelay;
-    int scrollDelayInit;
+    int scrollDelay; // How long the text stops once it's reached the left edge
+    int scrollDelayInit; // Initial scroll delay setting - This is typically the one you want to change when changing the option
     
     int l; // Number of characters
     int sl; // Length of text in pixels
     int y; // Y position in pixels
     
     Display() {
+        lineMode = 0;
+
         text = "";
         line = 0;
         forward = true;
         tColor = color(0, 0, 1);
+        rainbow = false;
+        rainbowSpeed = 1;
 
-        vuMeter = false;
+        dateFormat = new SimpleDateFormat("E MMM dd HH:mm:ss");
+        now = new Date();
+
         vuMode = 0;
         vuSmooth = 0;
         sclSnd = 0;
         hueCycles = 1;
         hueSpeed = 1;
         
-        scrollSpeed = (float(TS)/width)*default_SS;
+        scrollSpeed = 1;
         scrollMode = 0;
         scrollPos = 0;
         scrollDelay = 50;
@@ -47,23 +58,56 @@ class Display {
     }
     
     void render() {
-        if(vuMeter) {
-            switch(vuMode) {
-                default:
-                    sclSnd = (sclSnd*vuSmooth+amp.analyze()*ampMod*2)/(vuSmooth+1);
-                    for (int p = 0; p < width*sclSnd; p++) {
-                        stroke((((p*(360/width*hueCycles))+(millis()*1/60*hueSpeed)))%360, 1, 1);
-                        line(p, line*TS, p, line*TS+TS);
-                    }
-                    break;
-            }
-        } else {
-            fill(tColor);
-            if ((sl <= width || scrollMode == 2) && scrollMode != 1) {
+        switch(lineMode) {
+            case 1: // vuMeter
+                switch(vuMode) { // For adding more visualizers in the future
+                    default:
+                        sclSnd = (sclSnd*vuSmooth+amp.analyze()*ampMod*2)/(vuSmooth+1);
+                        for (int p = 0; p < width*sclSnd; p++) {
+                            stroke((((p*(360/width*hueCycles))+(millis()*1/60*hueSpeed)))%360, 1, 1);
+                            line(p, line*TS, p, line*TS+TS);
+                        }
+                        break;
+                }
+                break;
+            
+            case 2: // Clock
+                now = new Date();
+                setText(dateFormat.format(now));
+                drawText();
+                break;
+
+            case 3: // Weather
+                setText(Math.round(owm.getTemperature()) + "C - " + owm.getWeatherDescription());
+                drawText();
+                break;
+            
+            default: // Text display
+                drawText();
+                break;
+        }
+    }
+
+    void drawText() {
+        if (rainbow) {
+            tColor = color(millis()/60*rainbowSpeed%360, 1, 1);
+        }
+        fill(tColor);
+        
+        switch(scrollMode) {
+            case 1: // Scrolling forced off
                 text(text, (width-sl)/2, y);
-            } else {
+                break;
+            case 2: // Scrolling forced on
                 text(text, scroll(), y);
-            }
+                break;
+            default: // Auto
+                if (sl > width+1) { // Scroll text only if too wide (+1 for automatically added space)
+                    text(text, scroll(), y);
+                } else {
+                    text(text, (width-sl)/2, y);
+                }
+                break;
         }
     }
     
@@ -81,12 +125,12 @@ class Display {
             
         } else {
             if (forward) {
-                scrollPos -= scrollSpeed;
+                scrollPos -= (float(TS)/width)*scrollSpeed;
                 if (scrollPos < -int(textWidth(text)) - 1)
                     scrollReset();
                     
             } else {
-                scrollPos += scrollSpeed;
+                scrollPos += (float(TS)/width)*scrollSpeed;
                 if (scrollPos > width)
                     scrollReset();
             }
