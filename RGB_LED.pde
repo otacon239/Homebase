@@ -4,7 +4,7 @@ import processing.sound.*;
 import de.jnsdbr.openweathermap.*;
 
 OpenWeatherMap owm;
-final String API_KEY = "5cc2ef80549e61df7e7e11b561810dca";
+final String API_KEY = "[API key]";
 
 Amplitude amp;
 AudioIn in;
