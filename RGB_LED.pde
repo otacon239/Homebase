@@ -1,10 +1,14 @@
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import processing.sound.*;
+import de.jnsdbr.openweathermap.*;
+
+OpenWeatherMap owm;
+final String API_KEY = "5cc2ef80549e61df7e7e11b561810dca";
 
 Amplitude amp;
 AudioIn in;
-float ampMod = 3;
+float ampMod = 2;
 
 Date now = new Date();
 SimpleDateFormat dateFormatter = new SimpleDateFormat("E MMM dd HH:MM:ss");
@@ -36,15 +40,18 @@ void setup() {
         lines.get(l).line = l;
     }
 
-    lines.get(0).setText("Welcome to Omnigon");
+    owm = new OpenWeatherMap(this, API_KEY, "85257");
+
+    lines.get(0).setText("Now Playing: Mystery Skulls - Music"); // Placeholder for future music mode
     lines.get(1).setText(dateFormatter.format(now));
     lines.get(1).scrollMode = 1;
     lines.get(1).scrollDelayInit = 0;
     lines.get(1).tColor = color(0, 0, 1);
-    lines.get(2).setText("32C - Broken Clouds");
+    lines.get(2).setText(Math.round(owm.getTemperature()) + "C - " + owm.getWeatherDescription()); // Placeholder for future weather mode
     lines.get(2).tColor = color(180);
     lines.get(3).vuMeter = true;
     lines.get(3).vuSmooth = 2;
+    lines.get(3).hueCycles = .5;
 }
 
 void draw() {

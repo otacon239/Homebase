@@ -6,9 +6,12 @@ class Display {
     color tColor;
 
     boolean vuMeter;
+    int vuMode;
     float vuBoost;
     float vuSmooth;
     float sclSnd;
+    float hueCycles;
+    float hueSpeed;
     
     int scrollMode; // 0 = Auto, 1 = On, 2 = Off
     float scrollPos; // X position of text that is too wide for display
@@ -26,8 +29,11 @@ class Display {
         tColor = color(0, 0, 1);
 
         vuMeter = false;
+        vuMode = 0;
         vuSmooth = 0;
         sclSnd = 0;
+        hueCycles = 1;
+        hueSpeed = 1;
         
         scrollSpeed = (float(TS)/width)*default_SS;
         scrollMode = 0;
@@ -42,12 +48,15 @@ class Display {
     
     void render() {
         if(vuMeter) {
-            sclSnd = (sclSnd*vuSmooth+amp.analyze()*ampMod*2)/(vuSmooth+1);
-            for (int p = 0; p < width*sclSnd; p++) {
-                fill((((p*PI)+(millis()*1/30)))%360, 1, 1);
-                rect(p, line*TS, 1, TS);
+            switch(vuMode) {
+                default:
+                    sclSnd = (sclSnd*vuSmooth+amp.analyze()*ampMod*2)/(vuSmooth+1);
+                    for (int p = 0; p < width*sclSnd; p++) {
+                        stroke((((p*(360/width*hueCycles))+(millis()*1/60*hueSpeed)))%360, 1, 1);
+                        line(p, line*TS, p, line*TS+TS);
+                    }
+                    break;
             }
-            //rect(0, line*TS, width*amp.analyze()*2, TS);
         } else {
             fill(tColor);
             if ((sl <= width || scrollMode == 2) && scrollMode != 1) {
