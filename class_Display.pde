@@ -1,5 +1,12 @@
 class Display {
-    int lineMode; // Mode switch
+    int lineMode;
+    /*
+    Mode switch:
+    0 - Plain text
+    1 - vMeter - Basic VU Meter based on audio input
+    2 - Clock
+    3 - Weather
+    */
 
     String text; // The text to be displayed
     int line; // What line for the text to be displayed
@@ -10,11 +17,10 @@ class Display {
     float rainbowSpeed; // Speed of hue cycle on rainbow effect
 
     SimpleDateFormat dateFormat; // See https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html for more info
-    Date now; // Type for storing the current time
 
-    int vuMode; // To be used later when more visualizers are added
-    float vuSmooth; // Sets level of averaging for amplitude
-    float sclSnd; // Designed for storing the sound level only once per frame
+    int vMode; // To be used later when more visualizers are added
+    float vSmooth; // Sets level of averaging for amplitude
+    float amp; // Resulting amplitude
     float hueCycles; // Number of full hue rotations on the screen
     float hueSpeed; // Speed the hue rotation moves in degrees per frame
     
@@ -38,11 +44,10 @@ class Display {
         rainbowSpeed = 1;
 
         dateFormat = new SimpleDateFormat("E MMM dd HH:mm:ss");
-        now = new Date();
 
-        vuMode = 0;
-        vuSmooth = 0;
-        sclSnd = 0;
+        vMode = 0;
+        vSmooth = 0;
+        amp = 0;
         hueCycles = 1;
         hueSpeed = 1;
         
@@ -59,12 +64,12 @@ class Display {
     
     void render() {
         switch(lineMode) {
-            case 1: // vuMeter
-                switch(vuMode) { // For adding more visualizers in the future
+            case 1: // vMeter
+                switch(vMode) { // For adding more visualizers in the future
                     default:
-                        sclSnd = (sclSnd*vuSmooth+amp.analyze()*ampMod*2)/(vuSmooth+1);
-                        for (int p = 0; p < width*sclSnd; p++) {
-                            stroke((((p*(360/width*hueCycles))+(millis()*1/60*hueSpeed)))%360, 1, 1);
+                        amp = (amp*vSmooth+amp.analyze()*ampMod*2)/(vSmooth+1);
+                        for (int p = 0; p < width*amp; p++) {
+                            stroke(((p*(360/width*hueCycles))+(millis()*1/60*hueSpeed))%360, 1, 1);
                             line(p, line*TS, p, line*TS+TS);
                         }
                         break;
@@ -72,7 +77,6 @@ class Display {
                 break;
             
             case 2: // Clock
-                now = new Date();
                 setText(dateFormat.format(now));
                 drawText();
                 break;

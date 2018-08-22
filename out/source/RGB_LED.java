@@ -35,13 +35,14 @@ TODO
 
 // Setup OpenWeatherMap
 OpenWeatherMap owm;
+// OWM API Key can be acquired here: https://openweathermap.org/api
 final String API_KEY = "389d6c663dc37361a7aee8f600063c67"; // TODO: place this in .conf file
-final String location = "85257,us";
+final String location = "85257, us"; // More information here: https://openweathermap.org/current
 
 // Setup amplitude monitor variables
 Amplitude amp;
 AudioIn in;
-float ampMod = 2; // Multiplier for base amplitude
+float ampMod = 2; // Multiplier for base amplitude - Adjust this to scale the input
 
 
 static final int TS = 8; // Text size
@@ -211,7 +212,7 @@ class Display {
                 text(text, scroll(), y);
                 break;
             default: // Auto
-                if (sl > width+1) { // Scroll text only if too wide
+                if (sl > width+1) { // Scroll text only if too wide (+1 for automatically added space)
                     text(text, scroll(), y);
                 } else {
                     text(text, (width-sl)/2, y);

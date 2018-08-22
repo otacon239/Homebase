@@ -12,11 +12,13 @@ import java.util.Date;
 import processing.sound.*;
 import de.jnsdbr.openweathermap.*;
 
+Date now; // Variable for storing the current time
+
 // Setup OpenWeatherMap
 OpenWeatherMap owm;
 // OWM API Key can be acquired here: https://openweathermap.org/api
-final String API_KEY = "[API Key]"; // TODO: place this in .conf file
-final String location = "[location]"; // More information here: https://openweathermap.org/current
+final String API_KEY = "[API key]"; // TODO: place this in .conf file
+final String location = "[Location]"; // More information here: https://openweathermap.org/current
 
 // Setup amplitude monitor variables
 Amplitude amp;
@@ -24,7 +26,7 @@ AudioIn in;
 float ampMod = 2; // Multiplier for base amplitude - Adjust this to scale the input
 
 
-static final int TS = 8; // Text size
+static final int TS = 8; // Text size in pixels
 
 ArrayList <Display> lines = new ArrayList<Display>(); // Setup array where each line is its own object
 
@@ -66,11 +68,12 @@ void setup() {
     lines.get(2).tColor = color(180);
     
     lines.get(3).lineMode = 1;
-    lines.get(3).vuSmooth = 2;
+    lines.get(3).vSmooth = 2;
     lines.get(3).hueCycles = .5;
 }
 
 void draw() {
+    now = new Date();
     // TODO: Find a way to run updateWeather only once an hour
     background(0);
 
