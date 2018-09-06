@@ -5,8 +5,9 @@ import processing.opengl.*;
 
 import java.text.SimpleDateFormat; 
 import java.util.Date; 
-import processing.sound.*; 
 import de.jnsdbr.openweathermap.*; 
+import ddf.minim.analysis.*; 
+import ddf.minim.*; 
 
 import java.util.HashMap; 
 import java.util.ArrayList; 
@@ -33,19 +34,23 @@ TODO
 
 
 
+
+Date now; // Variable for storing the current time
+SimpleDateFormat timeStampFormat;
+
 // Setup OpenWeatherMap
 OpenWeatherMap owm;
 // OWM API Key can be acquired here: https://openweathermap.org/api
 final String API_KEY = "389d6c663dc37361a7aee8f600063c67"; // TODO: place this in .conf file
 final String location = "85257, us"; // More information here: https://openweathermap.org/current
+int updateMinutes = 60; // Number of minutes in between weather updates, Minimum 5 minutes, Recommended 15-60 minutes
 
-// Setup amplitude monitor variables
-Amplitude amp;
-AudioIn in;
+// Setup audio vizualizer variables
 float ampMod = 2; // Multiplier for base amplitude - Adjust this to scale the input
+Minim minim;
+AudioInput in;
 
-
-static final int TS = 8; // Text size
+static final int TS = 8; // Text size in pixels
 
 ArrayList <Display> lines = new ArrayList<Display>(); // Setup array where each line is its own object
 
@@ -59,11 +64,9 @@ public void setup() {
     textFont(font, TS);
      // As this is pixel perfect text, we want to disable smoothing
 
-    // Create initializers for audio vizualizers
-    amp = new Amplitude(this);
-    in = new AudioIn(this, 0);
-    in.start();
-    amp.input(in);
+    // Initialize audio input
+    minim = new Minim(this);
+    in = minim.getLineIn();
 
     // Create lines based on screen size and text size
     for (int l = 0; l < height*TS; l++) {
@@ -72,6 +75,8 @@ public void setup() {
         lines.get(l).scrollSpeed = 2;
     }
 
+    now = new Date();
+    timeStampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     updateWeather();
 
     // TODO: Move the following lines to external config file
@@ -87,12 +92,17 @@ public void setup() {
     lines.get(2).tColor = color(180);
     
     lines.get(3).lineMode = 1;
-    lines.get(3).vuSmooth = 2;
+    lines.get(3).vMode = 1;
+    lines.get(3).dbFloor = 50;
     lines.get(3).hueCycles = .5f;
 }
 
 public void draw() {
-    // TODO: Find a way to run updateWeather only once an hour
+    now = new Date();
+
+    if (frameCount%(60*60*max(5, updateMinutes)) == 0) {
+        updateWeather();
+    }
     background(0);
 
     for (int i = 0; i < lines.size(); i++)
@@ -100,7 +110,8 @@ public void draw() {
 }
 
 public void updateWeather() { // Pull new weather information (only run this rarely as this will pull from the API key)
-        owm = new OpenWeatherMap(this, API_KEY, location);
+    println(timeStampFormat.format(now) + " - Updating Weather...");
+    owm = new OpenWeatherMap(this, API_KEY, location);
 }
 
 public void keyPressed() {
@@ -109,7 +120,14 @@ public void keyPressed() {
     }
 }
 class Display {
-    int lineMode; // Mode switch
+    int lineMode;
+    /*
+    Mode switch:
+    0 (default) - Plain text
+    1 - Audio Visualizer - See vMode for all vizualizers
+    2 - Clock
+    3 - Weather
+    */
 
     String text; // The text to be displayed
     int line; // What line for the text to be displayed
@@ -120,13 +138,23 @@ class Display {
     float rainbowSpeed; // Speed of hue cycle on rainbow effect
 
     SimpleDateFormat dateFormat; // See https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html for more info
-    Date now; // Type for storing the current time
 
-    int vuMode; // To be used later when more visualizers are added
-    float vuSmooth; // Sets level of averaging for amplitude
-    float sclSnd; // Designed for storing the sound level only once per frame
+    int vMode; // Selector for which visualizer you want to use:
+    /*
+    0 (default) - Basic VU meter
+    1 - FFT (spectrum analyzer)
+    */
+    float vSmooth; // Sets level of averaging for amplitude
+    float adjAmp; // Resulting amplitude - Adjust the ampMod variable in main sketch to scale result
+    float hueOffset; // Offset of the base hue value
     float hueCycles; // Number of full hue rotations on the screen
-    float hueSpeed; // Speed the hue rotation moves in degrees per frame
+    float hueSpeed; // Speed the hue rotation moves in full cycles/second
+
+    FFT fft; // DO NOT CHANGE - This is what creates the frequency bands
+    WindowFunction fftWindow; // (advanced) Specify a preferred FFT window - See http://code.compartmental.net/minim/windowfunction_class_windowfunction.html
+    boolean capEnabled; // Show "cap" at the top of each band
+    int capColor; // Color of the cap
+    float dbFloor; // Scale the dB floor - Higher values = more sensitive to sound (typical range of 25 to 100 depending on use case)
     
     int scrollMode; // 0 = Auto (based on string width), 1 = On, 2 = Off
     float scrollPos; // X position of text that is too wide for display
@@ -137,7 +165,7 @@ class Display {
     int sl; // Length of text in pixels
     int y; // Y position in pixels
     
-    Display() {
+    Display() { // Initialize all variables
         lineMode = 0;
 
         text = "";
@@ -148,14 +176,21 @@ class Display {
         rainbowSpeed = 1;
 
         dateFormat = new SimpleDateFormat("E MMM dd HH:mm:ss");
-        now = new Date();
 
-        vuMode = 0;
-        vuSmooth = 0;
-        sclSnd = 0;
+        vMode = 0;
+        vSmooth = 2;
+        adjAmp = 0;
         hueCycles = 1;
-        hueSpeed = 1;
-        
+        hueSpeed = .1f;
+
+        fft = new FFT(in.bufferSize(), in.sampleRate());
+        fftWindow = FFT.HAMMING;
+        fft.logAverages(22, 7); // Adjust scale to be logarithmic - See http://code.compartmental.net/minim/fft_method_logaverages.html
+
+        capEnabled = true;
+        capColor = color(0, 0, 1);
+        dbFloor = 35;
+
         scrollSpeed = 1;
         scrollMode = 0;
         scrollPos = 0;
@@ -164,17 +199,39 @@ class Display {
         
         l = text.length();
         sl = PApplet.parseInt(textWidth(text));
-        y = (line*TS)+TS - 2; 
+        y = (line*TS)+TS - 2;
     }
     
     public void render() {
         switch(lineMode) {
-            case 1: // vuMeter
-                switch(vuMode) { // For adding more visualizers in the future
-                    default:
-                        sclSnd = (sclSnd*vuSmooth+amp.analyze()*ampMod*2)/(vuSmooth+1);
-                        for (int p = 0; p < width*sclSnd; p++) {
-                            stroke((((p*(360/width*hueCycles))+(millis()*1/60*hueSpeed)))%360, 1, 1);
+            case 1: // Audio Visualizer
+                switch(vMode) {
+                    case 1: // FFT Spectrum Analyzer - thanks to https://forum.processing.org/two/discussion/19936/how-to-get-an-octave-based-frequency-spectrum-from-the-fft-in-minim
+                        fft.forward(in.mix);
+  
+                        for (int i = 0; i < fft.avgSize(); i++) {
+                            float amplitude = fft.getAvg(i);
+                            
+                            float bandDB = 8 * log(2 * amplitude / fft.timeSize());
+                            
+                            float bandHeight = min(map(bandDB, 0, -dbFloor, 0, 8), 8);
+                            
+                            if (bandHeight < 8) { // Don't draw if value is zero
+                                float strokeHue = (((millis()/1000.0f)*360*hueSpeed) + (i*360/width)*hueCycles + hueOffset)%360;
+                                stroke(strokeHue, 1, 1);
+                                line(i, line*TS+TS, i, line*TS+bandHeight+1);
+                                if (capEnabled) {
+                                    stroke(360);
+                                    point(i, line*TS+bandHeight+1);
+                                }
+                            }
+                        }
+                        break;
+                    default: // VU Meter
+                        adjAmp = (adjAmp*vSmooth+abs(in.mix.get(0))*ampMod)/(vSmooth+1);
+                        for (int p = 0; p < width*adjAmp; p++) {
+                            float strokeHue = (((millis()/1000.0f)*360*hueSpeed) + (p*360/width)*hueCycles + hueOffset)%360;
+                            stroke(strokeHue, 1, 1);
                             line(p, line*TS, p, line*TS+TS);
                         }
                         break;
@@ -182,7 +239,6 @@ class Display {
                 break;
             
             case 2: // Clock
-                now = new Date();
                 setText(dateFormat.format(now));
                 drawText();
                 break;
@@ -228,9 +284,9 @@ class Display {
         } else if (scrollDelay == 0) {
             scrollDelay = -1;
             if (forward) {
-                scrollPos--;
+                scrollPos -= scrollSpeed;
             } else {
-                scrollPos++;
+                scrollPos += scrollSpeed;
             }
             
         } else {

@@ -9,22 +9,24 @@ TODO
 // Library imports
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import processing.sound.*;
 import de.jnsdbr.openweathermap.*;
+import ddf.minim.analysis.*;
+import ddf.minim.*;
 
 Date now; // Variable for storing the current time
+SimpleDateFormat timeStampFormat;
 
 // Setup OpenWeatherMap
 OpenWeatherMap owm;
 // OWM API Key can be acquired here: https://openweathermap.org/api
 final String API_KEY = "[API key]"; // TODO: place this in .conf file
-final String location = "[Location]"; // More information here: https://openweathermap.org/current
+final String location = "[location]"; // More information here: https://openweathermap.org/current
+int updateMinutes = 60; // Number of minutes in between weather updates, Minimum 5 minutes, Recommended 15-60 minutes
 
-// Setup amplitude monitor variables
-Amplitude amp;
-AudioIn in;
+// Setup audio vizualizer variables
 float ampMod = 2; // Multiplier for base amplitude - Adjust this to scale the input
-
+Minim minim;
+AudioInput in;
 
 static final int TS = 8; // Text size in pixels
 
@@ -40,11 +42,9 @@ void setup() {
     textFont(font, TS);
     noSmooth(); // As this is pixel perfect text, we want to disable smoothing
 
-    // Create initializers for audio vizualizers
-    amp = new Amplitude(this);
-    in = new AudioIn(this, 0);
-    in.start();
-    amp.input(in);
+    // Initialize audio input
+    minim = new Minim(this);
+    in = minim.getLineIn();
 
     // Create lines based on screen size and text size
     for (int l = 0; l < height*TS; l++) {
@@ -53,6 +53,8 @@ void setup() {
         lines.get(l).scrollSpeed = 2;
     }
 
+    now = new Date();
+    timeStampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     updateWeather();
 
     // TODO: Move the following lines to external config file
@@ -68,13 +70,17 @@ void setup() {
     lines.get(2).tColor = color(180);
     
     lines.get(3).lineMode = 1;
-    lines.get(3).vSmooth = 2;
+    lines.get(3).vMode = 1;
+    lines.get(3).dbFloor = 50;
     lines.get(3).hueCycles = .5;
 }
 
 void draw() {
     now = new Date();
-    // TODO: Find a way to run updateWeather only once an hour
+
+    if (frameCount%(60*60*max(5, updateMinutes)) == 0) {
+        updateWeather();
+    }
     background(0);
 
     for (int i = 0; i < lines.size(); i++)
@@ -82,7 +88,8 @@ void draw() {
 }
 
 void updateWeather() { // Pull new weather information (only run this rarely as this will pull from the API key)
-        owm = new OpenWeatherMap(this, API_KEY, location);
+    println(timeStampFormat.format(now) + " - Updating Weather...");
+    owm = new OpenWeatherMap(this, API_KEY, location);
 }
 
 void keyPressed() {
