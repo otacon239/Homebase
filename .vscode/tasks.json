@@ -16,11 +16,11 @@
         "panel": "dedicated"
       },
       "args": [
-		"--force",
-		"--sketch=${workspaceRoot}",
-		"--output=${workspaceRoot}/out",
-		"--run"
-	  ],
+        "--force",
+        "--sketch=${workspaceRoot}",
+        "--output=${workspaceRoot}/out",
+        "--run"
+      ],
       "windows": {
         "args": [
           "--force",
@@ -28,7 +28,8 @@
           "--output=${workspaceRoot}\\out",
           "--run"
         ]
-      }
+      },
+      "problemMatcher": []
     }
   ]
 }

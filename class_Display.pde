@@ -23,8 +23,7 @@ class Display {
     0 (default) - Basic VU meter
     1 - FFT (spectrum analyzer)
     */
-    float vSmooth; // Sets level of averaging for amplitude
-    float adjAmp; // Resulting amplitude - Adjust the ampMod variable in main sketch to scale result
+    float ampMult; // Amplitude multiplier
     float hueOffset; // Offset of the base hue value
     float hueCycles; // Number of full hue rotations on the screen
     float hueSpeed; // Speed the hue rotation moves in full cycles/second
@@ -35,7 +34,7 @@ class Display {
     color capColor; // Color of the cap
     float dbFloor; // Scale the dB floor - Higher values = more sensitive to sound (typical range of 25 to 100 depending on use case)
     
-    int scrollMode; // 0 = Auto (based on string width), 1 = On, 2 = Off
+    int scrollMode; // 0 = Auto (based on string width), 1 = Off, 2 = On
     float scrollPos; // X position of text that is too wide for display
     int scrollDelay; // How long the text stops once it's reached the left edge
     int scrollDelayInit; // Initial scroll delay setting - This is typically the one you want to change when changing the option
@@ -57,14 +56,14 @@ class Display {
         dateFormat = new SimpleDateFormat("E MMM dd HH:mm:ss");
 
         vMode = 0;
-        vSmooth = 2;
-        adjAmp = 0;
+        ampMult = 1;
         hueCycles = 1;
         hueSpeed = .1;
 
         fft = new FFT(in.bufferSize(), in.sampleRate());
         fftWindow = FFT.HAMMING;
-        fft.logAverages(22, 7); // Adjust scale to be logarithmic - See http://code.compartmental.net/minim/fft_method_logaverages.html
+        fft.logAverages(width, 9); // Adjust scale to be logarithmic (number of bands, number of octaves)
+                                   // See http://code.compartmental.net/minim/fft_method_logaverages.html
 
         capEnabled = true;
         capColor = color(0, 0, 1);
@@ -93,9 +92,9 @@ class Display {
                             
                             float bandDB = 8 * log(2 * amplitude / fft.timeSize());
                             
-                            float bandHeight = min(map(bandDB, 0, -dbFloor, 0, 8), 8);
+                            float bandHeight = min(map(bandDB, 0, -dbFloor, 0, TS), TS);
                             
-                            if (bandHeight < 8) { // Don't draw if value is zero
+                            if (bandHeight < TS) { // Don't draw if value is zero
                                 float strokeHue = (((millis()/1000.0)*360*hueSpeed) + (i*360/width)*hueCycles + hueOffset)%360;
                                 stroke(strokeHue, 1, 1);
                                 line(i, line*TS+TS, i, line*TS+bandHeight+1);
@@ -107,8 +106,15 @@ class Display {
                         }
                         break;
                     default: // VU Meter
-                        adjAmp = (adjAmp*vSmooth+abs(in.mix.get(0))*ampMod)/(vSmooth+1);
-                        for (int p = 0; p < width*adjAmp; p++) {
+                        int numSamples = int(min(in.sampleRate()/frameRate,in.bufferSize()));
+                        float amplitude = 0;
+                        for (int i = 0; i < numSamples; i++) {
+                            amplitude += abs(in.mix.get(i));
+                        }
+                        amplitude /= numSamples;
+                        amplitude *= ampMult;
+
+                        for (int p = 0; p < min(width*amplitude,width); p++) {
                             float strokeHue = (((millis()/1000.0)*360*hueSpeed) + (p*360/width)*hueCycles + hueOffset)%360;
                             stroke(strokeHue, 1, 1);
                             line(p, line*TS, p, line*TS+TS);

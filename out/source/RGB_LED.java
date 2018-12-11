@@ -22,6 +22,7 @@ public class RGB_LED extends PApplet {
 
 /*
 TODO
+- Convert hue values from 0-360 to 0-1
 - Create .conf file
 - Subscriber counter
 - Now playing ticker
@@ -35,18 +36,23 @@ TODO
 
 
 
+PVector origin = new PVector(0,0);
+PImage bootlogo;
+boolean boot = true;
+float bootX;
+
 Date now; // Variable for storing the current time
 SimpleDateFormat timeStampFormat;
+int targetFramerate = 60;
 
 // Setup OpenWeatherMap
 OpenWeatherMap owm;
 // OWM API Key can be acquired here: https://openweathermap.org/api
 final String API_KEY = "389d6c663dc37361a7aee8f600063c67"; // TODO: place this in .conf file
 final String location = "85257, us"; // More information here: https://openweathermap.org/current
-int updateMinutes = 60; // Number of minutes in between weather updates, Minimum 5 minutes, Recommended 15-60 minutes
+int updateMinutes = 60; // Number of minutes in between weather updates - Minimum 5 minutes, Recommended 15-60 minutes
 
 // Setup audio vizualizer variables
-float ampMod = 2; // Multiplier for base amplitude - Adjust this to scale the input
 Minim minim;
 AudioInput in;
 
@@ -55,14 +61,18 @@ static final int TS = 8; // Text size in pixels
 ArrayList <Display> lines = new ArrayList<Display>(); // Setup array where each line is its own object
 
 public void setup() {
-     // Size of Adafruit display in pixels
-    frameRate(60);
+     // Size of display in pixels
+    frameRate(targetFramerate);
     background(0);
-    colorMode(HSB, 360, 1.0f, 1.0f);
+    colorMode(HSB, 360, 1.0f, 1.0f, 1.0f);
 
-    PFont font = loadFont("04b03-8.vlw"); // Must use "Create Font" option to use others
+    PFont font = createFont("04b03-8.ttf", 8, false); // Must use "Create Font" option to use others - See: 
     textFont(font, TS);
      // As this is pixel perfect text, we want to disable smoothing
+
+    bootlogo = loadImage("bootlogo.png");
+    bootX = width;
+    origin.y = height;
 
     // Initialize audio input
     minim = new Minim(this);
@@ -80,33 +90,48 @@ public void setup() {
     updateWeather();
 
     // TODO: Move the following lines to external config file
-    lines.get(0).setText("omni_chat");
+    lines.get(0).setText("Omnigon");
     lines.get(0).rainbow = true;
 
-    lines.get(1).lineMode = 2;
-    lines.get(1).scrollMode = 2;
-    lines.get(1).scrollDelayInit = 0;
-    lines.get(1).tColor = color(0, 0, 1);
+    lines.get(1).lineMode = 2; // Clock
+    lines.get(1).scrollMode = 2; // Force scrolling
+    lines.get(1).scrollDelayInit = 0; // Forces constant scroll
+    lines.get(1).tColor = 0xffFFFFFF; // White
     
-    lines.get(2).lineMode = 3;
-    lines.get(2).tColor = color(180);
+    lines.get(2).lineMode = 3; // Weather
+    lines.get(2).tColor = 0xffF0F0F0; // Grey
     
-    lines.get(3).lineMode = 1;
-    lines.get(3).vMode = 1;
-    lines.get(3).dbFloor = 50;
+    lines.get(3).lineMode = 1; // Visualizer
+    lines.get(3).vMode = 1; // Spectrum analyzer
+    lines.get(3).dbFloor = 75; // Set db floor
     lines.get(3).hueCycles = .5f;
 }
 
 public void draw() {
-    now = new Date();
+    now = new Date(); // Update time every frame
 
-    if (frameCount%(60*60*max(5, updateMinutes)) == 0) {
+    if (frameCount%(targetFramerate*60*max(5, updateMinutes)) == 0) // Update weather only once every X minutes
         updateWeather();
-    }
-    background(0);
+    
+    background(0); // Blank frame
 
-    for (int i = 0; i < lines.size(); i++)
-        lines.get(i).render();
+    if (boot) {
+        if (bootX > -bootlogo.width) {
+            image(bootlogo, bootX, 0);
+            bootX--;
+        } else {
+            boot = false;
+        }
+    } else {
+        pushMatrix();
+        if (origin.y > 0) {
+            translate(origin.x, origin.y);
+            origin.y--;
+        }
+        for (int i = 0; i < lines.size(); i++) // Render lines
+            lines.get(i).render();
+        popMatrix();
+    }
 }
 
 public void updateWeather() { // Pull new weather information (only run this rarely as this will pull from the API key)
@@ -115,8 +140,14 @@ public void updateWeather() { // Pull new weather information (only run this rar
 }
 
 public void keyPressed() {
-    if (keyCode == ESC || key == 'q') { // Exit app
+    if (keyCode == ESC || key == 'q' || key == 'Q')
         exit();
+    if (key == 's' || key == 'S') // Press S to re-initialize audio input in case the source changes
+        in = minim.getLineIn();
+    if (key == 'b' || key == 'B') {
+        boot = true;
+        origin.y = height;
+        bootX = width;
     }
 }
 class Display {
@@ -144,8 +175,7 @@ class Display {
     0 (default) - Basic VU meter
     1 - FFT (spectrum analyzer)
     */
-    float vSmooth; // Sets level of averaging for amplitude
-    float adjAmp; // Resulting amplitude - Adjust the ampMod variable in main sketch to scale result
+    float ampMult; // Amplitude multiplier
     float hueOffset; // Offset of the base hue value
     float hueCycles; // Number of full hue rotations on the screen
     float hueSpeed; // Speed the hue rotation moves in full cycles/second
@@ -156,7 +186,7 @@ class Display {
     int capColor; // Color of the cap
     float dbFloor; // Scale the dB floor - Higher values = more sensitive to sound (typical range of 25 to 100 depending on use case)
     
-    int scrollMode; // 0 = Auto (based on string width), 1 = On, 2 = Off
+    int scrollMode; // 0 = Auto (based on string width), 1 = Off, 2 = On
     float scrollPos; // X position of text that is too wide for display
     int scrollDelay; // How long the text stops once it's reached the left edge
     int scrollDelayInit; // Initial scroll delay setting - This is typically the one you want to change when changing the option
@@ -178,14 +208,14 @@ class Display {
         dateFormat = new SimpleDateFormat("E MMM dd HH:mm:ss");
 
         vMode = 0;
-        vSmooth = 2;
-        adjAmp = 0;
+        ampMult = 1;
         hueCycles = 1;
         hueSpeed = .1f;
 
         fft = new FFT(in.bufferSize(), in.sampleRate());
         fftWindow = FFT.HAMMING;
-        fft.logAverages(22, 7); // Adjust scale to be logarithmic - See http://code.compartmental.net/minim/fft_method_logaverages.html
+        fft.logAverages(width, 9); // Adjust scale to be logarithmic (number of bands, number of octaves)
+                                   // See http://code.compartmental.net/minim/fft_method_logaverages.html
 
         capEnabled = true;
         capColor = color(0, 0, 1);
@@ -214,9 +244,9 @@ class Display {
                             
                             float bandDB = 8 * log(2 * amplitude / fft.timeSize());
                             
-                            float bandHeight = min(map(bandDB, 0, -dbFloor, 0, 8), 8);
+                            float bandHeight = min(map(bandDB, 0, -dbFloor, 0, TS), TS);
                             
-                            if (bandHeight < 8) { // Don't draw if value is zero
+                            if (bandHeight < TS) { // Don't draw if value is zero
                                 float strokeHue = (((millis()/1000.0f)*360*hueSpeed) + (i*360/width)*hueCycles + hueOffset)%360;
                                 stroke(strokeHue, 1, 1);
                                 line(i, line*TS+TS, i, line*TS+bandHeight+1);
@@ -228,8 +258,15 @@ class Display {
                         }
                         break;
                     default: // VU Meter
-                        adjAmp = (adjAmp*vSmooth+abs(in.mix.get(0))*ampMod)/(vSmooth+1);
-                        for (int p = 0; p < width*adjAmp; p++) {
+                        int numSamples = PApplet.parseInt(min(in.sampleRate()/frameRate,in.bufferSize()));
+                        float amplitude = 0;
+                        for (int i = 0; i < numSamples; i++) {
+                            amplitude += abs(in.mix.get(i));
+                        }
+                        amplitude /= numSamples;
+                        amplitude *= ampMult;
+
+                        for (int p = 0; p < min(width*amplitude,width); p++) {
                             float strokeHue = (((millis()/1000.0f)*360*hueSpeed) + (p*360/width)*hueCycles + hueOffset)%360;
                             stroke(strokeHue, 1, 1);
                             line(p, line*TS, p, line*TS+TS);

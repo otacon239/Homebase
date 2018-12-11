@@ -1,5 +1,6 @@
 /*
 TODO
+- Convert hue values from 0-360 to 0-1
 - Create .conf file
 - Subscriber counter
 - Now playing ticker
@@ -13,18 +14,23 @@ import de.jnsdbr.openweathermap.*;
 import ddf.minim.analysis.*;
 import ddf.minim.*;
 
+PVector origin = new PVector(0,0);
+PImage bootlogo;
+boolean boot = true;
+float bootX;
+
 Date now; // Variable for storing the current time
 SimpleDateFormat timeStampFormat;
+int targetFramerate = 60;
 
 // Setup OpenWeatherMap
 OpenWeatherMap owm;
 // OWM API Key can be acquired here: https://openweathermap.org/api
-final String API_KEY = "[API key]"; // TODO: place this in .conf file
-final String location = "[location]"; // More information here: https://openweathermap.org/current
-int updateMinutes = 60; // Number of minutes in between weather updates, Minimum 5 minutes, Recommended 15-60 minutes
+final String API_KEY = "389d6c663dc37361a7aee8f600063c67"; // TODO: place this in .conf file
+final String location = "85257, us"; // More information here: https://openweathermap.org/current
+int updateMinutes = 60; // Number of minutes in between weather updates - Minimum 5 minutes, Recommended 15-60 minutes
 
 // Setup audio vizualizer variables
-float ampMod = 2; // Multiplier for base amplitude - Adjust this to scale the input
 Minim minim;
 AudioInput in;
 
@@ -33,14 +39,18 @@ static final int TS = 8; // Text size in pixels
 ArrayList <Display> lines = new ArrayList<Display>(); // Setup array where each line is its own object
 
 void setup() {
-    size(64, 32); // Size of Adafruit display in pixels
-    frameRate(60);
+    size(64, 32); // Size of display in pixels
+    frameRate(targetFramerate);
     background(0);
-    colorMode(HSB, 360, 1.0, 1.0);
+    colorMode(HSB, 360, 1.0, 1.0, 1.0);
 
-    PFont font = loadFont("04b03-8.vlw"); // Must use "Create Font" option to use others
+    PFont font = createFont("04b03-8.ttf", 8, false); // Must use "Create Font" option to use others - See: 
     textFont(font, TS);
     noSmooth(); // As this is pixel perfect text, we want to disable smoothing
+
+    bootlogo = loadImage("bootlogo.png");
+    bootX = width;
+    origin.y = height;
 
     // Initialize audio input
     minim = new Minim(this);
@@ -58,33 +68,48 @@ void setup() {
     updateWeather();
 
     // TODO: Move the following lines to external config file
-    lines.get(0).setText("omni_chat");
+    lines.get(0).setText("Omnigon");
     lines.get(0).rainbow = true;
 
-    lines.get(1).lineMode = 2;
-    lines.get(1).scrollMode = 2;
-    lines.get(1).scrollDelayInit = 0;
-    lines.get(1).tColor = color(0, 0, 1);
+    lines.get(1).lineMode = 2; // Clock
+    lines.get(1).scrollMode = 2; // Force scrolling
+    lines.get(1).scrollDelayInit = 0; // Forces constant scroll
+    lines.get(1).tColor = #FFFFFF; // White
     
-    lines.get(2).lineMode = 3;
-    lines.get(2).tColor = color(180);
+    lines.get(2).lineMode = 3; // Weather
+    lines.get(2).tColor = #F0F0F0; // Grey
     
-    lines.get(3).lineMode = 1;
-    lines.get(3).vMode = 1;
-    lines.get(3).dbFloor = 50;
+    lines.get(3).lineMode = 1; // Visualizer
+    lines.get(3).vMode = 1; // Spectrum analyzer
+    lines.get(3).dbFloor = 75; // Set db floor
     lines.get(3).hueCycles = .5;
 }
 
 void draw() {
-    now = new Date();
+    now = new Date(); // Update time every frame
 
-    if (frameCount%(60*60*max(5, updateMinutes)) == 0) {
+    if (frameCount%(targetFramerate*60*max(5, updateMinutes)) == 0) // Update weather only once every X minutes
         updateWeather();
-    }
-    background(0);
+    
+    background(0); // Blank frame
 
-    for (int i = 0; i < lines.size(); i++)
-        lines.get(i).render();
+    if (boot) {
+        if (bootX > -bootlogo.width) {
+            image(bootlogo, bootX, 0);
+            bootX--;
+        } else {
+            boot = false;
+        }
+    } else {
+        pushMatrix();
+        if (origin.y > 0) {
+            translate(origin.x, origin.y);
+            origin.y--;
+        }
+        for (int i = 0; i < lines.size(); i++) // Render lines
+            lines.get(i).render();
+        popMatrix();
+    }
 }
 
 void updateWeather() { // Pull new weather information (only run this rarely as this will pull from the API key)
@@ -93,7 +118,13 @@ void updateWeather() { // Pull new weather information (only run this rarely as 
 }
 
 void keyPressed() {
-    if (keyCode == ESC || key == 'q') { // Exit app
+    if (keyCode == ESC || key == 'q' || key == 'Q')
         exit();
+    if (key == 's' || key == 'S') // Press S to re-initialize audio input in case the source changes
+        in = minim.getLineIn();
+    if (key == 'b' || key == 'B') {
+        boot = true;
+        origin.y = height;
+        bootX = width;
     }
 }
