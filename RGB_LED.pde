@@ -26,7 +26,7 @@ int targetFramerate = 60;
 // Setup OpenWeatherMap
 OpenWeatherMap owm;
 // OWM API Key can be acquired here: https://openweathermap.org/api
-final String API_KEY = "389d6c663dc37361a7aee8f600063c67"; // TODO: place this in .conf file
+final String API_KEY = "[API key]"; // TODO: place this in .conf file
 final String location = "85257, us"; // More information here: https://openweathermap.org/current
 int updateMinutes = 60; // Number of minutes in between weather updates - Minimum 5 minutes, Recommended 15-60 minutes
 
