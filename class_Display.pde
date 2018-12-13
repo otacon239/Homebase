@@ -34,24 +34,24 @@ class Display {
     color capColor; // Color of the cap
     float dbFloor; // Scale the dB floor - Higher values = more sensitive to sound (typical range of 25 to 100 depending on use case)
     
-    int scrollMode; // 0 = Auto (based on string width), 1 = Off, 2 = On
-    float scrollPos; // X position of text that is too wide for display
+    int scrollMode; // 0 = Auto (based on string width), 1 = Off, 2 = On, 3 = Once
+    int scrollPos; // X position of text that is too wide for display
     int scrollDelay; // How long the text stops once it's reached the left edge
     int scrollDelayInit; // Initial scroll delay setting - This is typically the one you want to change when changing the option
-    
-    int l; // Number of characters
-    int sl; // Length of text in pixels
+
+    int c; // Number of characters - c = characters
+    int sl; // Length of text in pixels - sl = string length
     int y; // Y position in pixels
     
-    Display() { // Initialize all variables
+    Display(int l) { // Initialize all variables
         lineMode = 0;
 
         text = "";
-        line = 0;
+        line = l;
         forward = true;
-        tColor = color(0, 0, 1);
+        tColor = color(1);
         rainbow = false;
-        rainbowSpeed = 1;
+        rainbowSpeed = .1;
 
         dateFormat = new SimpleDateFormat("E MMM dd HH:mm:ss");
 
@@ -66,7 +66,7 @@ class Display {
                                    // See http://code.compartmental.net/minim/fft_method_logaverages.html
 
         capEnabled = true;
-        capColor = color(0, 0, 1);
+        capColor = color(1);
         dbFloor = 35;
 
         scrollSpeed = 1;
@@ -75,7 +75,7 @@ class Display {
         scrollDelay = 50;
         scrollDelayInit = scrollDelay;
         
-        l = text.length();
+        c = text.length();
         sl = int(textWidth(text));
         y = (line*TS)+TS - 2;
     }
@@ -94,13 +94,13 @@ class Display {
                             
                             float bandHeight = min(map(bandDB, 0, -dbFloor, 0, TS), TS);
                             
-                            if (bandHeight < TS) { // Don't draw if value is zero
-                                float strokeHue = (((millis()/1000.0)*360*hueSpeed) + (i*360/width)*hueCycles + hueOffset)%360;
+                            if (bandHeight <= TS) { // Don't draw if value is zero
+                                float strokeHue = (((millis()/1000.0)*hueSpeed) + ((float)i/width)*hueCycles + hueOffset)%1.0f;
                                 stroke(strokeHue, 1, 1);
-                                line(i, line*TS+TS, i, line*TS+bandHeight+1);
+                                line(i, line*TS+TS, i, line*TS+bandHeight);
                                 if (capEnabled) {
-                                    stroke(360);
-                                    point(i, line*TS+bandHeight+1);
+                                    stroke(1);
+                                    point(i, line*TS+bandHeight);
                                 }
                             }
                         }
@@ -115,7 +115,7 @@ class Display {
                         amplitude *= ampMult;
 
                         for (int p = 0; p < min(width*amplitude,width); p++) {
-                            float strokeHue = (((millis()/1000.0)*360*hueSpeed) + (p*360/width)*hueCycles + hueOffset)%360;
+                            float strokeHue = (((millis()/1000.0)*hueSpeed) + ((float)p/width)*hueCycles + hueOffset)%1.0f;
                             stroke(strokeHue, 1, 1);
                             line(p, line*TS, p, line*TS+TS);
                         }
@@ -141,7 +141,7 @@ class Display {
 
     void drawText() {
         if (rainbow) {
-            tColor = color(millis()/60*rainbowSpeed%360, 1, 1);
+            tColor = color(millis()/1000.0f*rainbowSpeed%1.0f, 1, 1);
         }
         fill(tColor);
         
@@ -150,6 +150,7 @@ class Display {
                 text(text, (width-sl)/2, y);
                 break;
             case 2: // Scrolling forced on
+            case 3: // Scroll once - logic is determined in scroll() function
                 text(text, scroll(), y);
                 break;
             default: // Auto
@@ -165,7 +166,6 @@ class Display {
     float scroll() {
         if (scrollDelay > 0) {
             scrollDelay--;
-            
         } else if (scrollDelay == 0) {
             scrollDelay = -1;
             if (forward) {
@@ -173,23 +173,19 @@ class Display {
             } else {
                 scrollPos += scrollSpeed;
             }
-            
         } else {
             if (forward) {
                 scrollPos -= (float(TS)/width)*scrollSpeed;
-                if (scrollPos < -int(textWidth(text)) - 1)
+                if (scrollPos < -int(textWidth(text)) - 1 && scrollMode != 3)
                     scrollReset();
-                    
             } else {
                 scrollPos += (float(TS)/width)*scrollSpeed;
-                if (scrollPos > width)
+                if (scrollPos > width && scrollMode != 3)
                     scrollReset();
             }
-            
-            if (round(scrollPos) == 0)
+            if (round(scrollPos) == 0 && scrollMode != 3)
                 scrollDelay = scrollDelayInit;
         }
-        
         return scrollPos;
     }
     
@@ -207,7 +203,7 @@ class Display {
     
     void setText(String input_text) {
         text = input_text;
-        l = text.length();
+        c = text.length();
         sl = int(textWidth(text));
         y = (line*TS)+TS - 2;
     }

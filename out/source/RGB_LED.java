@@ -22,7 +22,6 @@ public class RGB_LED extends PApplet {
 
 /*
 TODO
-- Convert hue values from 0-360 to 0-1
 - Create .conf file
 - Subscriber counter
 - Now playing ticker
@@ -60,11 +59,14 @@ static final int TS = 8; // Text size in pixels
 
 ArrayList <Display> lines = new ArrayList<Display>(); // Setup array where each line is its own object
 
+Notification notify = new Notification(".");
+boolean notification = false;
+
 public void setup() {
      // Size of display in pixels
     frameRate(targetFramerate);
     background(0);
-    colorMode(HSB, 360, 1.0f, 1.0f, 1.0f);
+    colorMode(HSB, 1.0f, 1.0f, 1.0f, 1.0f);
 
     PFont font = createFont("04b03-8.ttf", 8, false); // Must use "Create Font" option to use others - See: 
     textFont(font, TS);
@@ -80,8 +82,7 @@ public void setup() {
 
     // Create lines based on screen size and text size
     for (int l = 0; l < height*TS; l++) {
-        lines.add(new Display());
-        lines.get(l).line = l;
+        lines.add(new Display(l));
         lines.get(l).scrollSpeed = 2;
     }
 
@@ -96,10 +97,10 @@ public void setup() {
     lines.get(1).lineMode = 2; // Clock
     lines.get(1).scrollMode = 2; // Force scrolling
     lines.get(1).scrollDelayInit = 0; // Forces constant scroll
-    lines.get(1).tColor = 0xffFFFFFF; // White
+    lines.get(1).tColor = color(1); // White
     
     lines.get(2).lineMode = 3; // Weather
-    lines.get(2).tColor = 0xffF0F0F0; // Grey
+    lines.get(2).tColor = color(.5f); // Grey
     
     lines.get(3).lineMode = 1; // Visualizer
     lines.get(3).vMode = 1; // Spectrum analyzer
@@ -124,9 +125,12 @@ public void draw() {
         }
     } else {
         pushMatrix();
-        if (origin.y > 0) {
-            translate(origin.x, origin.y);
+        translate(origin.x, origin.y);
+        if (origin.y > 0 && !notification) {
             origin.y--;
+        }
+        if (notification) {
+            notify.render();
         }
         for (int i = 0; i < lines.size(); i++) // Render lines
             lines.get(i).render();
@@ -149,6 +153,11 @@ public void keyPressed() {
         origin.y = height;
         bootX = width;
     }
+    if (key == 'n' || key == 'N') // Test notification trigger
+        if (!notification) {
+            notify = new Notification("This is a test");
+            notify.tWidth = PApplet.parseInt(textWidth(notify.text));
+        }
 }
 class Display {
     int lineMode;
@@ -186,24 +195,24 @@ class Display {
     int capColor; // Color of the cap
     float dbFloor; // Scale the dB floor - Higher values = more sensitive to sound (typical range of 25 to 100 depending on use case)
     
-    int scrollMode; // 0 = Auto (based on string width), 1 = Off, 2 = On
-    float scrollPos; // X position of text that is too wide for display
+    int scrollMode; // 0 = Auto (based on string width), 1 = Off, 2 = On, 3 = Once
+    int scrollPos; // X position of text that is too wide for display
     int scrollDelay; // How long the text stops once it's reached the left edge
     int scrollDelayInit; // Initial scroll delay setting - This is typically the one you want to change when changing the option
-    
-    int l; // Number of characters
-    int sl; // Length of text in pixels
+
+    int c; // Number of characters - c = characters
+    int sl; // Length of text in pixels - sl = string length
     int y; // Y position in pixels
     
-    Display() { // Initialize all variables
+    Display(int l) { // Initialize all variables
         lineMode = 0;
 
         text = "";
-        line = 0;
+        line = l;
         forward = true;
-        tColor = color(0, 0, 1);
+        tColor = color(1);
         rainbow = false;
-        rainbowSpeed = 1;
+        rainbowSpeed = .1f;
 
         dateFormat = new SimpleDateFormat("E MMM dd HH:mm:ss");
 
@@ -218,7 +227,7 @@ class Display {
                                    // See http://code.compartmental.net/minim/fft_method_logaverages.html
 
         capEnabled = true;
-        capColor = color(0, 0, 1);
+        capColor = color(1);
         dbFloor = 35;
 
         scrollSpeed = 1;
@@ -227,7 +236,7 @@ class Display {
         scrollDelay = 50;
         scrollDelayInit = scrollDelay;
         
-        l = text.length();
+        c = text.length();
         sl = PApplet.parseInt(textWidth(text));
         y = (line*TS)+TS - 2;
     }
@@ -246,13 +255,13 @@ class Display {
                             
                             float bandHeight = min(map(bandDB, 0, -dbFloor, 0, TS), TS);
                             
-                            if (bandHeight < TS) { // Don't draw if value is zero
-                                float strokeHue = (((millis()/1000.0f)*360*hueSpeed) + (i*360/width)*hueCycles + hueOffset)%360;
+                            if (bandHeight <= TS) { // Don't draw if value is zero
+                                float strokeHue = (((millis()/1000.0f)*hueSpeed) + ((float)i/width)*hueCycles + hueOffset)%1.0f;
                                 stroke(strokeHue, 1, 1);
-                                line(i, line*TS+TS, i, line*TS+bandHeight+1);
+                                line(i, line*TS+TS, i, line*TS+bandHeight);
                                 if (capEnabled) {
-                                    stroke(360);
-                                    point(i, line*TS+bandHeight+1);
+                                    stroke(1);
+                                    point(i, line*TS+bandHeight);
                                 }
                             }
                         }
@@ -267,7 +276,7 @@ class Display {
                         amplitude *= ampMult;
 
                         for (int p = 0; p < min(width*amplitude,width); p++) {
-                            float strokeHue = (((millis()/1000.0f)*360*hueSpeed) + (p*360/width)*hueCycles + hueOffset)%360;
+                            float strokeHue = (((millis()/1000.0f)*hueSpeed) + ((float)p/width)*hueCycles + hueOffset)%1.0f;
                             stroke(strokeHue, 1, 1);
                             line(p, line*TS, p, line*TS+TS);
                         }
@@ -293,7 +302,7 @@ class Display {
 
     public void drawText() {
         if (rainbow) {
-            tColor = color(millis()/60*rainbowSpeed%360, 1, 1);
+            tColor = color(millis()/1000.0f*rainbowSpeed%1.0f, 1, 1);
         }
         fill(tColor);
         
@@ -302,6 +311,7 @@ class Display {
                 text(text, (width-sl)/2, y);
                 break;
             case 2: // Scrolling forced on
+            case 3: // Scroll once - logic is determined in scroll() function
                 text(text, scroll(), y);
                 break;
             default: // Auto
@@ -317,7 +327,6 @@ class Display {
     public float scroll() {
         if (scrollDelay > 0) {
             scrollDelay--;
-            
         } else if (scrollDelay == 0) {
             scrollDelay = -1;
             if (forward) {
@@ -325,23 +334,19 @@ class Display {
             } else {
                 scrollPos += scrollSpeed;
             }
-            
         } else {
             if (forward) {
                 scrollPos -= (PApplet.parseFloat(TS)/width)*scrollSpeed;
-                if (scrollPos < -PApplet.parseInt(textWidth(text)) - 1)
+                if (scrollPos < -PApplet.parseInt(textWidth(text)) - 1 && scrollMode != 3)
                     scrollReset();
-                    
             } else {
                 scrollPos += (PApplet.parseFloat(TS)/width)*scrollSpeed;
-                if (scrollPos > width)
+                if (scrollPos > width && scrollMode != 3)
                     scrollReset();
             }
-            
-            if (round(scrollPos) == 0)
+            if (round(scrollPos) == 0 && scrollMode != 3)
                 scrollDelay = scrollDelayInit;
         }
-        
         return scrollPos;
     }
     
@@ -359,9 +364,50 @@ class Display {
     
     public void setText(String input_text) {
         text = input_text;
-        l = text.length();
+        c = text.length();
         sl = PApplet.parseInt(textWidth(text));
         y = (line*TS)+TS - 2;
+    }
+}
+class Notification {
+    String text;
+    int c;
+    int scrollPos;
+    int push; // This keeps track of the screen position when "pushing it up" and back down
+    int tWidth;
+    boolean displayed;
+
+    Notification(String t) {
+        println("Notification: \"" + t + "\"");
+        text = t;
+        c = color(1);
+        scrollPos = width;
+        tWidth = 0;
+        displayed = false;
+        notification = true; // Set the global flag that a notification should be displayed
+    }
+
+    public void render() {
+        translate(0, -push);
+        if (push < TS && !displayed) {
+            push++;
+        } else if (push > 0 && displayed) {
+            push--;
+        } else if (push >= TS && !displayed) {
+            text(text, scrollPos, height+TS);
+            scroll();
+        } else {
+            notification = false;
+        }
+    }
+
+    public void scroll() {
+        if (scrollPos > -tWidth) {
+            scrollPos--;
+        } else {
+            displayed = true;
+            println("Notification cleared");
+        }
     }
 }
   public void settings() {  size(64, 32);  noSmooth(); }

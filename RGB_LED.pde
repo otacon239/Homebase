@@ -1,6 +1,5 @@
 /*
 TODO
-- Convert hue values from 0-360 to 0-1
 - Create .conf file
 - Subscriber counter
 - Now playing ticker
@@ -26,8 +25,8 @@ int targetFramerate = 60;
 // Setup OpenWeatherMap
 OpenWeatherMap owm;
 // OWM API Key can be acquired here: https://openweathermap.org/api
-final String API_KEY = "[API key]"; // TODO: place this in .conf file
-final String location = "85257, us"; // More information here: https://openweathermap.org/current
+final String API_KEY = "[API Key]"; // TODO: place this in .conf file
+final String location = "[zip code], us"; // More information here: https://openweathermap.org/current
 int updateMinutes = 60; // Number of minutes in between weather updates - Minimum 5 minutes, Recommended 15-60 minutes
 
 // Setup audio vizualizer variables
@@ -38,11 +37,14 @@ static final int TS = 8; // Text size in pixels
 
 ArrayList <Display> lines = new ArrayList<Display>(); // Setup array where each line is its own object
 
+Notification notify = new Notification(".");
+boolean notification = false;
+
 void setup() {
     size(64, 32); // Size of display in pixels
     frameRate(targetFramerate);
     background(0);
-    colorMode(HSB, 360, 1.0, 1.0, 1.0);
+    colorMode(HSB, 1.0, 1.0, 1.0, 1.0);
 
     PFont font = createFont("04b03-8.ttf", 8, false); // Must use "Create Font" option to use others - See: 
     textFont(font, TS);
@@ -58,8 +60,7 @@ void setup() {
 
     // Create lines based on screen size and text size
     for (int l = 0; l < height*TS; l++) {
-        lines.add(new Display());
-        lines.get(l).line = l;
+        lines.add(new Display(l));
         lines.get(l).scrollSpeed = 2;
     }
 
@@ -74,10 +75,10 @@ void setup() {
     lines.get(1).lineMode = 2; // Clock
     lines.get(1).scrollMode = 2; // Force scrolling
     lines.get(1).scrollDelayInit = 0; // Forces constant scroll
-    lines.get(1).tColor = #FFFFFF; // White
+    lines.get(1).tColor = color(1); // White
     
     lines.get(2).lineMode = 3; // Weather
-    lines.get(2).tColor = #F0F0F0; // Grey
+    lines.get(2).tColor = color(.5); // Grey
     
     lines.get(3).lineMode = 1; // Visualizer
     lines.get(3).vMode = 1; // Spectrum analyzer
@@ -102,9 +103,12 @@ void draw() {
         }
     } else {
         pushMatrix();
-        if (origin.y > 0) {
-            translate(origin.x, origin.y);
+        translate(origin.x, origin.y);
+        if (origin.y > 0 && !notification) {
             origin.y--;
+        }
+        if (notification) {
+            notify.render();
         }
         for (int i = 0; i < lines.size(); i++) // Render lines
             lines.get(i).render();
@@ -127,4 +131,9 @@ void keyPressed() {
         origin.y = height;
         bootX = width;
     }
+    if (key == 'n' || key == 'N') // Test notification trigger
+        if (!notification) {
+            notify = new Notification("This is a test");
+            notify.tWidth = int(textWidth(notify.text));
+        }
 }
