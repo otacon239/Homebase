@@ -35,7 +35,7 @@ class Display {
     float dbFloor; // Scale the dB floor - Higher values = more sensitive to sound (typical range of 25 to 100 depending on use case)
     
     int scrollMode; // 0 = Auto (based on string width), 1 = Off, 2 = On, 3 = Once
-    int scrollPos; // X position of text that is too wide for display
+    float scrollPos; // X position of text that is too wide for display
     int scrollDelay; // How long the text stops once it's reached the left edge
     int scrollDelayInit; // Initial scroll delay setting - This is typically the one you want to change when changing the option
 

@@ -23,7 +23,7 @@ class Notification {
         } else if (push > 0 && displayed) {
             push--;
         } else if (push >= TS && !displayed) {
-            text(text, scrollPos, height+TS);
+            text(text, scrollPos, height+TS-1);
             scroll();
         } else {
             notification = false;

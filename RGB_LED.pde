@@ -26,7 +26,7 @@ int targetFramerate = 60;
 OpenWeatherMap owm;
 // OWM API Key can be acquired here: https://openweathermap.org/api
 final String API_KEY = "[API Key]"; // TODO: place this in .conf file
-final String location = "[zip code], us"; // More information here: https://openweathermap.org/current
+final String location = "[location]"; // More information here: https://openweathermap.org/current
 int updateMinutes = 60; // Number of minutes in between weather updates - Minimum 5 minutes, Recommended 15-60 minutes
 
 // Setup audio vizualizer variables
@@ -133,7 +133,7 @@ void keyPressed() {
     }
     if (key == 'n' || key == 'N') // Test notification trigger
         if (!notification) {
-            notify = new Notification("This is a test");
+            notify = new Notification("Bomb diggity");
             notify.tWidth = int(textWidth(notify.text));
         }
 }
