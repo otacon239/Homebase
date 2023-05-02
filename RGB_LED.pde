@@ -12,6 +12,7 @@ import java.util.Date;
 import de.jnsdbr.openweathermap.*;
 import ddf.minim.analysis.*;
 import ddf.minim.*;
+import hypermedia.net.*;
 
 PVector origin = new PVector(0,0);
 PImage bootlogo;
@@ -34,6 +35,8 @@ Minim minim;
 AudioInput in;
 
 static final int TS = 8; // Text size in pixels
+
+UDP udp; // Create UDP object for sending frames
 
 ArrayList <Display> lines = new ArrayList<Display>(); // Setup array where each line is its own object
 
@@ -84,6 +87,9 @@ void setup() {
     lines.get(3).vMode = 1; // Spectrum analyzer
     lines.get(3).dbFloor = 75; // Set db floor
     lines.get(3).hueCycles = .5;
+
+    udp = new UDP(this, 9999); // Replace 9999 with the desired port
+    udp.log(false); // Disable logging for performance
 }
 
 void draw() {
@@ -114,6 +120,15 @@ void draw() {
             lines.get(i).render();
         popMatrix();
     }
+
+    // Capture the frame as an image
+    PImage frame = get();
+
+    // Convert the image to a byte array
+    byte[] frameBytes = byte(frame.pixels);
+
+    // Send the byte array over UDP
+    udp.send(frameBytes, "127.0.0.1", 8888); // Replace "127.0.0.1" with the destination IP, and 8888 with the destination port
 }
 
 void updateWeather() { // Pull new weather information (only run this rarely as this will pull from the API key)
