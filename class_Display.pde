@@ -6,21 +6,19 @@ class Display {
     1 - Audio Visualizer - See vMode for all vizualizers
     2 - Clock
     3 - Weather
-    */
+    -- Need to make these simpler names in next version*/
 
     String text; // The text to be displayed
-    int line; // What line for the text to be displayed
-    boolean forward; // Direction of text
+    int line; // Line that the text will be displayed on
+    boolean forward; // Direction of text -- Setting this to false will reverse
     float scrollSpeed; // Speed of text in pixels/frame
     color tColor; // Text Color
     boolean rainbow; // Enable/disable rainbow text
     float rainbowSpeed; // Speed of hue cycle on rainbow effect
 
-    SimpleDateFormat dateFormat; // See https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html for more info
-
     int vMode; // Selector for which visualizer you want to use:
     /*
-    0 (default) - Basic VU meter
+    0 - Basic VU meter (default)
     1 - FFT (spectrum analyzer)
     */
     float ampMult; // Amplitude multiplier
@@ -52,8 +50,6 @@ class Display {
         tColor = color(1);
         rainbow = false;
         rainbowSpeed = .1;
-
-        dateFormat = new SimpleDateFormat("E MMM dd HH:mm:ss");
 
         vMode = 0;
         ampMult = 1;
@@ -124,7 +120,7 @@ class Display {
                 break;
             
             case 2: // Clock
-                setText(dateFormat.format(now));
+                setText(clockFormat.format(now));
                 drawText();
                 break;
 
