@@ -19,7 +19,7 @@ import ddf.minim.*;
 import hypermedia.net.*;
 
 // Setup OpenWeatherMap - You will need to download the most recent .zip (not source code) from here: https://github.com/jnsdbr/OpenWeatherMap/releases
-import de.jnsdbr.openweathermap.*; // Go to Sketch > Add File and choose the .jar found in the library folder to add this to the project - Other methods falied for me
+import de.jnsdbr.openweathermap.*; // Go to Sketch >> Add File and choose the .jar found in the library folder to add this to the project - Other methods falied for me
 final String API_KEY = "API_KEY"; // OWM API Key can be acquired here: https://openweathermap.org/api
 final String location = "ZIP,COUNTRY_CODE"; // More information here: https://openweathermap.org/current#zip
 int updateInterval = 15; // Number of minutes in between weather updates - Minimum 5 minutes, Recommended 10-20
