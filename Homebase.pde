@@ -42,8 +42,8 @@ AudioInput in;
 static final int TS = 8; // Text height in pixels
 
 static final String DEST_IP = "127.0.0.1";
-static final int DEST_PORT = 9999; // Port on the receiving server
-static final int SEND_PORT = 8888; // Port data ill be sent from
+static final int DEST_PORT = 8888; // Port on the receiving server
+static final int SEND_PORT = 9999; // Port data will be sent from
 UDP udp; // Create UDP object for sending frames
 
 ArrayList <Display> lines = new ArrayList<Display>(); // Setup array where each line is its own object
